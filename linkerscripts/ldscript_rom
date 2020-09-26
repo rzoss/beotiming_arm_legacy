@@ -1,0 +1,105 @@
+/* identify the Entry Point ***************************************************/
+ENTRY(_startup)
+
+/* Memory Definitions */
+
+MEMORY
+{
+  CODE (rx) : ORIGIN =  0x00000000, LENGTH = 0x0040000
+  DATA (rwx) : ORIGIN = 0x00200000, LENGTH = 0x0010000
+}
+
+/* specify sections ***********************************************************/
+SECTIONS 
+ {
+	
+	/* startup code 														  */
+	.text :					
+	{
+		. = ALIGN(4);		/* advance location counter to the next 32bit boundary*/
+		*(.startup)
+	    *(.glue_7)
+	    *(.glue_7t)
+	} >CODE
+
+	/* collect all sections that should go into ram after startup  			  */ 
+	.text :					
+	{
+		. = ALIGN(4);		/* advance location counter to the next 32bit boundary*/
+		*(.text)		/* all .text sections (executable code)				  */
+		*(.rodata)		/* all .rodata sections (constants, strings, etc.)	  */
+		*(.rodata*)		/* all .rodata* sections (constants, strings, etc.)	  */
+		*(.glue_7)		/* all .glue_7 sections  (no idea what these are)	  */
+		*(.glue_7t)		/* all .glue_7t sections (no idea what these are)	  */		
+		_etext = .;		/* define a symbol _etext after the last code byte	  */
+	} >CODE  			
+
+	/* collect all initialized .data sections that go into RAM  			  */ 
+	.data :	AT(	_etext)	
+	{
+		. = ALIGN(4);		/* advance location counter to the next 32bit boundary*/
+		_data = .;		/* define a symbol for the start of the .data section */
+		_fastrun_start = .;
+		*(.fastrun)
+		_fastrun_end = .;
+		. = ALIGN(4);
+		_data_start = .;		/* define a symbol for the start of the .data section */
+		*(.data)		/* all .data sections			
+		_data_end = .;		/* define a symbol for the end of the .data section   */
+	} >DATA
+
+	/* collect all uninitialized .bss sections that go into RAM  			  */
+	.bss :								
+	{
+		. = ALIGN(4);
+		_bss_start = .;	/* define a symbol for the start of the .bss section  */
+		__bss_start__ = .;
+		*(.bss)			/* all .bss sections  								  */
+		*(.bss*)			/* all .bss sections  								  */
+		/* reserve memory for the USER-stack									  */
+		. = ALIGN(4);		/* advance location counter to the next 32bit boundary*/
+		_stack_start_address = .;
+		. += USR_STACK_SIZE;
+		
+		/* reserve memory for the SVC-stack										  */
+		. = ALIGN(4);
+		_usr_stack_top_address = .;
+		. += SVC_STACK_SIZE;
+		
+		/* reserve memory for the IRQ-stack										  */
+		. = ALIGN(4);
+		_svc_stack_top_address = .;
+		. += IRQ_STACK_SIZE;
+		
+		/* reserve memory for the FIQ-stack										  */
+		. = ALIGN(4);
+		_irq_stack_top_address = .;
+		. += FIQ_STACK_SIZE;
+	
+		/* reserve memory for the ABORT-stack									  */
+		. = ALIGN(4);
+		_fiq_stack_top_address = .;
+		. += ABT_STACK_SIZE;
+	
+		/* reserve memory for the UNDEF-stack									  */
+		. = ALIGN(4);
+		_abt_stack_top_address = .;
+		. += UND_STACK_SIZE;	
+	
+		. = ALIGN(4);
+		_und_stack_top_address = .;
+		_stack_end_address = .;
+		_bss_end = . ;		/* define a symbol marking the end of the .bss section */
+		__bss_end__ = .;
+		PROVIDE (__stack = .);
+	} >DATA
+
+	PROVIDE (end_of_ram = ORIGIN(DATA) + LENGTH(DATA)) ;
+
+	PROVIDE (end = .);
+	PROVIDE (_end = .);
+	.debug_info     0 : { *(.debug_info) }
+   	.debug_abbrev   0 : { *(.debug_abbrev) }
+   	.debug_line     0 : { *(.debug_line) }
+   	.debug_frame    0 : { *(.debug_frame) }
+ }	
